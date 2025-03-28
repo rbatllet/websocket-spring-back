@@ -190,12 +190,14 @@ public class ChatMessageHandler extends TextWebSocketHandler {
      * @return Sanitized username
      */
     private String sanitizeUsername(String username) {
-        // Remove any HTML tags and trim
-        String sanitized = username.replaceAll("<[^>]*>", "").trim();
+        // Remove any HTML tags, scripts, and potentially harmful content
+        String sanitized = username.replaceAll("<[^>]*>", "") // Remove HTML tags
+                             .replaceAll("(?i)script|alert|eval|function|\\(|\\)|'|\\\"|\\\\|XSS", "") // Remove JavaScript keywords and XSS
+                             .trim();
         
-        // Limit length
-        if (sanitized.length() > 30) {
-            sanitized = sanitized.substring(0, 30);
+        // Limit length to 28 characters
+        if (sanitized.length() > 28) {
+            sanitized = sanitized.substring(0, 28);
         }
         
         // If empty after sanitizing, generate a default one

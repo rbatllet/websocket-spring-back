@@ -93,13 +93,68 @@ find "$STATIC_DIR" -type d -empty -delete
 
 This ensures that no stale files remain between builds and prevents potential conflicts or outdated resources being served.
 
-## Building for Production
+## Building and Testing
+
+### Building for Production
 
 ```sh
 ./mvnw clean package
 ```
 
 This produces a standalone JAR file in the `target` directory.
+
+### Running Tests
+
+```sh
+./mvnw test
+```
+
+The application includes various tests:
+
+- **Unit Tests**: Verify the behavior of individual components
+  - `ChatMessageTest`: Tests the `ChatMessage` model class and its factory methods
+  - `ChatMessageHandlerTest`: Tests the WebSocket handler using mocked sessions
+  - `WebSocketConfigTest`: Tests the WebSocket configuration
+
+- **Integration Tests**: Test the application as a whole
+  - `WebSocketIntegrationTest`: Starts a server and tests connecting to the WebSocket endpoint
+
+Code coverage can be generated with:
+
+```sh
+./mvnw test jacoco:report
+```
+
+The coverage report will be available in `target/site/jacoco/index.html`.
+
+## Security and Sanitization
+
+The system implements security measures to protect against common attacks:
+
+- **Username sanitization**: Removes HTML tags, scripts, and potentially harmful content from usernames.
+```java
+private String sanitizeUsername(String username) {
+    // Remove any HTML tags, scripts, and potentially harmful content
+    String sanitized = username.replaceAll("<[^>]*>", "") // Remove HTML tags
+                         .replaceAll("(?i)script|alert|eval|function|\\(|\\)|'|\\\"|\\\\|XSS", "") // Remove JavaScript keywords and XSS
+                         .trim();
+    
+    // Limit length to 28 characters
+    if (sanitized.length() > 28) {
+        sanitized = sanitized.substring(0, 28);
+    }
+    
+    // If empty after sanitizing, generate a default one
+    if (sanitized.isEmpty()) {
+        sanitized = "User-" + System.currentTimeMillis() % 10000;
+    }
+    
+    return sanitized;
+}
+```
+
+- **Secure JSON handling**: Uses Jackson to parse and validate JSON messages, catching and handling errors.
+- **WebSocket error handling**: Properly detects and handles transport errors in WebSocket sessions.
 
 ## Configuration
 
@@ -196,3 +251,28 @@ docker-compose up
 ```
 
 Docker-specific configuration is activated via the Spring profile `docker` in `application-docker.properties`.
+
+## Testing and Code Quality
+
+The project uses JUnit 5 and Mockito for unit and integration testing. The testing structure includes:
+
+- Mocks to simulate WebSocket sessions and verify interactions
+- Argument captors to inspect sent messages
+- Testing of truncation and sanitization behavior
+- Verification of error scenarios and exceptions
+- Specific test configurations, such as lenient mode for Mockito
+
+The tests cover all major aspects of the application, including:
+- Connection establishment and closure
+- Handling of different message types
+- Message broadcasting
+- Username sanitization
+- Transport errors and exception handling
+
+## Recent Updates
+
+- Fixed username truncation issue
+- Enhanced sanitization for improved security
+- Optimized unit tests with Mockito
+- Fixed issues in build configurations
+- Added detailed documentation
